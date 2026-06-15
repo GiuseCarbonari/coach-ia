@@ -19,38 +19,73 @@ const config: Config = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        // Token semantici shadcn/ui, mappati sulla palette del design system
+        // (variabili definite in app/globals.css, valori raw hex/rgba).
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+
+        // --- Token espliciti del design system (docs/COACH_IA_DESIGN_SYSTEM.md) ---
+        // Sfondi
+        base: "var(--bg-base)",
+        surface: {
+          DEFAULT: "var(--bg-surface)",
+          2: "var(--bg-surface-2)",
+        },
+        // Testo: text-primary (#F5F2EC) → `text-foreground`; text-secondary
+        // (#B8B2A6) → `text-secondary`; text-muted (#9A9488) → `text-muted`
+        // (mappati sui token shadcn sopra). Qui solo il livello senza
+        // equivalente shadcn:
+        faint: "var(--text-faint)",
+        // Accento ambra (brand)
+        amber: {
+          DEFAULT: "var(--amber)",
+          hover: "var(--amber-hover)",
+          dim: "var(--amber-dim)",
+          on: "var(--amber-on)",
+        },
+        // Semaforico readiness (solo per stato/readiness)
+        "ready-go": {
+          DEFAULT: "var(--ready-go)",
+          border: "var(--ready-go-border)",
+        },
+        "ready-modify": {
+          DEFAULT: "var(--ready-modify)",
+          border: "var(--ready-modify-border)",
+        },
+        "ready-skip": {
+          DEFAULT: "var(--ready-skip)",
+          border: "var(--ready-skip-border)",
         },
       },
       borderRadius: {

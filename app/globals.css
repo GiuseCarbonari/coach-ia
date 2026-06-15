@@ -2,51 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Token tema shadcn/ui — palette neutra di default, personalizzabile in seguito. */
+/*
+  Coach IA — Design System (Dark Premium / Ambra).
+  Fonte unica: docs/COACH_IA_DESIGN_SYSTEM.md. Nessun valore inventato qui:
+  ogni token deriva esattamente dalla palette del documento.
+  Dark mode è l'unico tema → i token vivono su :root (sempre attivi).
+*/
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
+    /* --- Sfondi --- */
+    --bg-base: #16130e;        /* sfondo pagina (marrone-carbone caldo) */
+    --bg-surface: #1c1810;     /* card, pannelli */
+    --bg-surface-2: #221e16;   /* elementi attivi, hover, tab selezionato */
+    --bg-border: #262219;      /* divisori, bordi interni */
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* --- Testo --- */
+    --text-primary: #f5f2ec;   /* titoli, numeri, testo principale */
+    --text-secondary: #b8b2a6; /* sottotitoli, testo corpo */
+    --text-muted: #9a9488;     /* label, metadati */
+    --text-faint: #6b665c;     /* hint, note, caption */
+
+    /* --- Accento ambra (brand) --- */
+    --amber: #f59e0b;
+    --amber-hover: #e08e07;
+    --amber-dim: rgba(245, 158, 11, 0.12);
+    --amber-on: #16130e;       /* testo su bottone ambra (mai bianco) */
+
+    /* --- Semaforico readiness (solo per stato) --- */
+    --ready-go: #22c55e;
+    --ready-go-border: rgba(34, 197, 94, 0.35);
+    --ready-modify: #eab308;
+    --ready-modify-border: rgba(234, 179, 8, 0.35);
+    --ready-skip: #ef4444;
+    --ready-skip-border: rgba(239, 68, 68, 0.35);
+
+    /*
+      Mapping dei token semantici shadcn/ui sulla palette del design system.
+      Permette ai componenti esistenti di adottare il tema dark premium
+      senza modificarne markup o logica. Valori in hex/rgba (Tailwind li usa
+      raw via var(), senza wrapper hsl()).
+    */
+    --background: var(--bg-base);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--amber);
+    --primary-foreground: var(--amber-on);
+    --secondary: var(--text-secondary);
+    --secondary-foreground: var(--amber-on);
+    --muted: var(--text-muted);
+    --muted-foreground: var(--text-muted);
+    --accent: var(--bg-surface-2);
+    --accent-foreground: var(--text-primary);
+    --destructive: var(--ready-skip);
+    --destructive-foreground: var(--amber-on);
+    --border: var(--bg-border);
+    --input: var(--bg-border);
+    --ring: var(--amber);
+    --radius: 0.5rem;
   }
 }
 
@@ -55,6 +70,6 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-base text-foreground;
   }
 }

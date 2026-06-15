@@ -34,20 +34,6 @@ export async function GET(request: NextRequest) {
 
   // Verifica CSRF: state della query e cookie devono esistere e coincidere.
   if (!code || !state || !stateCookie || state !== stateCookie) {
-    // Log diagnostico TEMPORANEO (rimuovere dopo aver risolto il bug OAuth
-    // in produzione): distingue cookie ASSENTE da MISMATCH senza mai loggare
-    // i valori dello state, che sono segreti CSRF.
-    console.error(
-      `Stato OAuth non valido: code=${code ? "presente" : "assente"}, ` +
-        `state(query)=${state ? "presente" : "assente"}, ` +
-        `cookie state=${
-          !stateCookie
-            ? "ASSENTE"
-            : state === stateCookie
-              ? "presente e combaciante"
-              : "presente ma DIVERSO"
-        }`
-    );
     return new NextResponse("Stato OAuth non valido", { status: 401 });
   }
 
