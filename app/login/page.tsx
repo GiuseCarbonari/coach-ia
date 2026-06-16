@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
-import { setBrowserRememberAccess } from "@/lib/supabase/session-persistence";
 
 /**
  * Pagina /login — autenticazione Supabase (email + password).
@@ -43,7 +42,6 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberAccess, setRememberAccess] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -61,7 +59,6 @@ export default function LoginPage() {
       setError(localizeError(error.message));
       return;
     }
-    setBrowserRememberAccess(rememberAccess);
     // Il middleware deciderà se mandare a /connect o /dashboard.
     router.push("/dashboard");
     router.refresh();
@@ -186,18 +183,6 @@ export default function LoginPage() {
               className={inputClass}
             />
           </div>
-
-          {isSignin && (
-            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-secondary">
-              <input
-                type="checkbox"
-                checked={rememberAccess}
-                onChange={(e) => setRememberAccess(e.target.checked)}
-                className="h-4 w-4 rounded border-border bg-base accent-[var(--amber)]"
-              />
-              Mantieni l&apos;accesso
-            </label>
-          )}
 
           {/* 6. Box errore — stato semaforico rosso */}
           {error && (

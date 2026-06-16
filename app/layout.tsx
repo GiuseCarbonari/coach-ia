@@ -1,10 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Coach IA",
   description:
     "Coach AI endurance connesso a Intervals.icu: pianifica, adatta e spiega l'allenamento usando dati reali e il protocollo Section 11.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

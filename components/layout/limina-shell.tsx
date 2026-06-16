@@ -17,7 +17,7 @@ export function LiminaShell({
     <div className="min-h-screen bg-base font-body">
       <main
         className={cn(
-          "mx-auto w-full max-w-[640px] px-5 pb-28 pt-8 sm:px-6",
+          "mx-auto flex w-full max-w-[640px] flex-col gap-5 px-5 pb-28 pt-8 sm:px-6",
           className
         )}
       >

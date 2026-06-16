@@ -142,7 +142,7 @@ export default async function PlanPage() {
       </div>
 
       {/* Azioni principali — Rigenera (secondaria) | Invia (primaria teal) */}
-      <div className="mt-4 flex gap-2.5">
+      <div className="flex gap-2.5">
         <GenerateWeekButton hasPlan={plan != null} />
         {plan && (
           <PushButton
@@ -154,7 +154,7 @@ export default async function PlanPage() {
 
       {/* Nessun piano */}
       {!plan && (
-        <div className="mt-6 rounded-[18px] border border-border bg-surface px-6 py-10 text-center">
+        <div className="rounded-[18px] border border-border bg-surface px-6 py-10 text-center">
           <p className="font-serif text-lg text-foreground">
             Nessun piano ancora.
           </p>
@@ -168,7 +168,7 @@ export default async function PlanPage() {
         <>
           {/* Stats strip: ore / TSS / intense */}
           {weekStats && (
-            <div className="mt-3 flex gap-2">
+            <div className="flex gap-2">
               <StatPill label="Ore" value={weekStats.hoursLabel} />
               <StatPill label="TSS ~" value={weekStats.tssLabel} />
               <StatPill label="Intense" value={String(weekStats.hardCount)} />

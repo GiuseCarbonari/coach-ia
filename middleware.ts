@@ -1,12 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import {
-  applyRememberAccessToCookieOptions,
-  REMEMBER_ACCESS_COOKIE,
-  shouldRememberAccess,
-} from "@/lib/supabase/session-persistence";
-
 /**
  * Middleware di protezione rotte (Milestone 1, punto 4; onboarding Milestone 4).
  *
@@ -24,12 +18,9 @@ import {
  */
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
-  const rememberAccess = shouldRememberAccess(
-    request.cookies.get(REMEMBER_ACCESS_COOKIE)?.value
-  );
 
-  // Client Supabase legato ai cookie della richiesta: serve a validare la
-  // sessione e, se necessario, a propagare il refresh dei cookie di sessione.
+  // Client Supabase legato ai cookie della richiesta: valida la sessione e
+  // propaga il refresh dei cookie (token scaduto → nuovo token in response).
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -46,11 +37,7 @@ export async function middleware(request: NextRequest) {
           );
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(
-              name,
-              value,
-              applyRememberAccessToCookieOptions(options, rememberAccess)
-            );
+            response.cookies.set(name, value, options);
           });
         },
       },

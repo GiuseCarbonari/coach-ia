@@ -238,16 +238,14 @@ export default async function DashboardPage() {
       </div>
 
       {/* Refresh action — sempre in cima */}
-      <div className="mt-4">
-        <RefreshControl
-          lastFetchedAt={lastFetchedAt}
-          initialStatus={initialStatus}
-        />
-      </div>
+      <RefreshControl
+        lastFetchedAt={lastFetchedAt}
+        initialStatus={initialStatus}
+      />
 
       {/* No data state */}
       {!mirror && (
-        <div className="mt-6 rounded-[18px] border border-border bg-surface px-6 py-10 text-center">
+        <div className="rounded-[18px] border border-border bg-surface px-6 py-10 text-center">
           <p className="font-serif text-lg text-foreground">
             Nessun dato ancora.
           </p>
