@@ -78,6 +78,19 @@ const config: Config = {
           dim: "var(--amber-dim)",
           on: "var(--amber-on)",
         },
+        telemetry: {
+          blue: "var(--accent-blue)",
+          "blue-dim": "var(--accent-blue-dim)",
+          gold: "var(--accent-gold)",
+          "gold-dim": "var(--accent-gold-dim)",
+        },
+        zone: {
+          z1: "var(--zone-z1)",
+          z2: "var(--zone-z2)",
+          z3: "var(--zone-z3)",
+          z4: "var(--zone-z4)",
+          z5: "var(--zone-z5)",
+        },
         // Semaforico readiness (solo per stato/readiness)
         "ready-go": {
           DEFAULT: "var(--ready-go)",
@@ -98,6 +111,29 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
         card: "16px",
         metric: "11px",
+      },
+      fontFamily: {
+        display: [
+          "Archivo",
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        body: [
+          "Archivo",
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        data: [
+          "IBM Plex Mono",
+          "SFMono-Regular",
+          "Consolas",
+          "Liberation Mono",
+          "monospace",
+        ],
       },
     },
   },

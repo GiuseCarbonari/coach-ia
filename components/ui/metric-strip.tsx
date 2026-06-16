@@ -18,9 +18,9 @@ export function MetricStrip({
   return (
     <dl
       className={cn(
-        "grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border",
+        "grid grid-cols-2 gap-3 overflow-hidden rounded-[28px]",
         columnClass,
-        "[&>*]:bg-surface",
+        "[&>*]:aurora-glass [&>*]:rounded-[20px]",
         className
       )}
     >

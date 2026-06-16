@@ -6,33 +6,34 @@ import { cn } from "@/lib/utils";
 
 const STYLES: Record<
   ReadinessResult["decision"],
-  { text: string; border: string; bar: string }
+  { text: string; border: string; dot: string; glow: string }
 > = {
   GO: {
     text: "text-ready-go",
     border: "border-ready-go-border",
-    bar: "border-l-ready-go",
+    dot: "bg-ready-go",
+    glow: "shadow-[0_0_44px_-22px_rgba(91,232,154,.9)]",
   },
   MODIFY: {
     text: "text-ready-modify",
     border: "border-ready-modify-border",
-    bar: "border-l-ready-modify",
+    dot: "bg-ready-modify",
+    glow: "shadow-[0_0_44px_-22px_rgba(255,194,77,.9)]",
   },
   SKIP: {
     text: "text-ready-skip",
     border: "border-ready-skip-border",
-    bar: "border-l-ready-skip",
+    dot: "bg-ready-skip",
+    glow: "shadow-[0_0_44px_-22px_rgba(255,104,85,.9)]",
   },
 };
 
-/** Parola grande in italiano (dal glossario sez. 1). */
 const HUMAN_LABELS: Record<ReadinessResult["decision"], string> = {
   GO: "Via libera",
   MODIFY: "Vai più piano oggi",
   SKIP: "Oggi riposa",
 };
 
-/** Frase sotto (trascritta esatta dal glossario sez. 1). */
 const COPY: Record<
   ReadinessResult["decision"],
   { phrase: string; action: string }
@@ -51,11 +52,124 @@ const COPY: Record<
   },
 };
 
-const CONFIDENCE_LABELS: Record<ReadinessResult["confidence"], string> = {
-  high: "alta",
-  medium: "media",
-  low: "bassa",
+const CONFIDENCE_COPY: Record<ReadinessResult["confidence"], string> = {
+  high: "Confidenza alta: i dati chiave di oggi sono completi.",
+  medium: "Confidenza media: alcuni dati chiave mancano o sono parziali.",
+  low: "Confidenza bassa: il coach usa pochi segnali e resta prudente.",
 };
+
+type ConditionMetrics = {
+  ctl: number | null;
+  atl: number | null;
+  tsb: number | null;
+  ctlDelta: number | null;
+  atlDelta: number | null;
+  tsbDelta: number | null;
+};
+
+function formatNumber(value: number | null, showSign = false) {
+  if (value == null) return "—";
+  const rounded = Math.round(value);
+  return showSign && rounded > 0 ? `+${rounded}` : String(rounded);
+}
+
+function formatDelta(value: number | null) {
+  if (value == null) return "—";
+  const rounded = Math.round(value);
+  if (rounded === 0) return "0";
+  return rounded > 0 ? `+${rounded}` : String(rounded);
+}
+
+function Trend({
+  value,
+  invert = false,
+}: {
+  value: number | null;
+  invert?: boolean;
+}) {
+  if (value == null || Math.abs(value) < 0.5) {
+    return <span className="font-data text-[11px] text-muted">stabile</span>;
+  }
+  const up = value > 0;
+  const positive = invert ? !up : up;
+  return (
+    <span
+      className={cn(
+        "font-data inline-flex items-center gap-1 text-[11px] font-semibold",
+        positive ? "text-amber" : "text-muted"
+      )}
+    >
+      <span aria-hidden>{up ? "↗" : "↘"}</span>
+      {Math.abs(Math.round(value))}
+    </span>
+  );
+}
+
+function MetricChip({
+  label,
+  value,
+  delta,
+  colorClass,
+  showSign,
+  invertTrend,
+}: {
+  label: string;
+  value: number | null;
+  delta: number | null;
+  colorClass: string;
+  showSign?: boolean;
+  invertTrend?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-1 border-l border-border pl-4 first:border-l-0 first:pl-0">
+      <span className="flex items-center gap-2 text-xs font-semibold text-muted">
+        <span className={cn("h-2 w-2 rounded-full", colorClass)} />
+        {label}
+      </span>
+      <span className="font-data flex items-baseline gap-2 text-[22px] font-semibold leading-none text-foreground">
+        {formatNumber(value, showSign)}
+        <Trend value={delta} invert={invertTrend} />
+      </span>
+    </div>
+  );
+}
+
+function DeltaBadge({
+  label,
+  delta,
+  colorClass,
+  invertTrend,
+}: {
+  label: string;
+  delta: number | null;
+  colorClass: string;
+  invertTrend?: boolean;
+}) {
+  const up = delta != null && delta > 0;
+  const down = delta != null && delta < 0;
+  const positive = delta == null || Math.abs(delta) < 0.5 ? false : invertTrend ? !up : up;
+
+  return (
+    <div className="rounded-2xl border border-border bg-white/[0.045] p-4 backdrop-blur-xl">
+      <div className="flex items-center gap-2 text-xs font-semibold text-muted">
+        <span className={cn("h-2 w-2 rounded-full", colorClass)} />
+        {label}
+      </div>
+      <div
+        className={cn(
+          "font-data mt-2 flex items-baseline gap-2 text-[28px] font-semibold leading-none",
+          positive ? "text-amber" : "text-foreground"
+        )}
+      >
+        <span>{formatDelta(delta)}</span>
+        <span className="text-sm text-muted" aria-hidden>
+          {up ? "↗" : down ? "↘" : "→"}
+        </span>
+      </div>
+      <p className="font-data mt-2 text-[11px] text-faint">vs ieri</p>
+    </div>
+  );
+}
 
 function SignalList({ signals }: { signals: ReadinessSignal[] }) {
   return (
@@ -65,9 +179,7 @@ function SignalList({ signals }: { signals: ReadinessSignal[] }) {
           <span
             className={cn(
               "mt-[0.55rem] h-1.5 w-1.5 shrink-0 rounded-full",
-              signal.status === "red"
-                ? "bg-ready-skip"
-                : "bg-ready-modify"
+              signal.status === "red" ? "bg-ready-skip" : "bg-ready-modify"
             )}
             aria-hidden
           />
@@ -80,8 +192,10 @@ function SignalList({ signals }: { signals: ReadinessSignal[] }) {
 
 export function ReadinessHero({
   readiness,
+  conditionMetrics,
 }: {
   readiness: ReadinessResult;
+  conditionMetrics?: ConditionMetrics;
 }) {
   const styles = STYLES[readiness.decision];
   const copy = COPY[readiness.decision];
@@ -92,64 +206,127 @@ export function ReadinessHero({
   );
 
   return (
-    <section
-      className={cn(
-        "rounded-2xl border border-l-[3px] bg-surface px-5 py-6 sm:px-7 sm:py-7",
-        styles.border,
-        styles.bar
-      )}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
-          Readiness di oggi
-        </p>
-        <p className="text-xs text-muted">
-          Confidenza {CONFIDENCE_LABELS[readiness.confidence]}
-        </p>
-      </div>
+    <section className="aurora-glass relative overflow-hidden rounded-[32px] px-5 py-6 sm:px-7 sm:py-7">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-amber/24 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 top-1/3 h-80 w-80 rounded-full bg-telemetry-blue/16 blur-3xl" />
 
-      <div className="mt-6 grid gap-6 md:grid-cols-[minmax(170px,0.7fr)_minmax(0,1.3fr)] md:items-start md:gap-10">
-        {/* Parola umana dominante, con codice tecnico sempre visibile. */}
-        <div>
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p
-              className={cn(
-                "text-[40px] font-semibold leading-tight tracking-[-0.04em] sm:text-[50px]",
-                styles.text
-              )}
-            >
-              {humanLabel}
+      <div className="relative z-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="font-data text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+              Condizione
             </p>
-            <span className="text-xs font-medium tracking-[0.06em] text-muted">
-              · {readiness.decision}
-            </span>
+            <h2 className="font-display mt-1 text-[26px] font-bold leading-tight tracking-[-0.03em] text-foreground">
+              Condizione di oggi
+            </h2>
           </div>
+          <p
+            className={cn(
+              "max-w-[260px] rounded-2xl border bg-white/[0.035] px-3 py-2 text-xs leading-relaxed text-secondary",
+              styles.border
+            )}
+          >
+            <span className={cn("mr-2 inline-block h-2 w-2 rounded-full", styles.dot)} />
+            {CONFIDENCE_COPY[readiness.confidence]}
+          </p>
         </div>
 
-        {/* Frase letterale del glossario e segnali determinanti. */}
-        <div className="max-w-xl">
-          <h2 className="text-xl font-medium leading-snug tracking-[-0.02em] text-foreground sm:text-[22px]">
-            {copy.phrase}
-          </h2>
+        {conditionMetrics && (
+          <div className="mt-5 flex gap-4 rounded-[22px] border border-border bg-white/[0.035] p-4 backdrop-blur-xl">
+            <MetricChip
+              label="Forma"
+              value={conditionMetrics.ctl}
+              delta={conditionMetrics.ctlDelta}
+              colorClass="bg-amber"
+            />
+            <MetricChip
+              label="Fatica"
+              value={conditionMetrics.atl}
+              delta={conditionMetrics.atlDelta}
+              colorClass="bg-telemetry-blue"
+              invertTrend
+            />
+            <MetricChip
+              label="Freschezza"
+              value={conditionMetrics.tsb}
+              delta={conditionMetrics.tsbDelta}
+              colorClass="bg-telemetry-gold"
+              showSign
+            />
+          </div>
+        )}
 
-          <details className="group mt-3">
-            <summary className="inline-flex min-h-10 cursor-pointer list-none items-center text-sm text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber">
-              Perché?
-            </summary>
-            <div className="mt-3">
-              {signals.length > 0 ? (
-                <SignalList signals={signals} />
-              ) : (
-                <p className="text-sm leading-relaxed text-secondary">
-                  Nessun segnale critico rilevato nei dati di oggi.
-                </p>
-              )}
+        <div className="mt-6 grid gap-7 lg:grid-cols-[330px_minmax(0,1fr)] lg:items-center">
+          <div
+            className={cn(
+              "rounded-[30px] border bg-[#111923]/80 p-5 backdrop-blur-xl",
+              styles.border,
+              styles.glow
+            )}
+          >
+            <div className="flex flex-col items-center rounded-[26px] border border-white/10 bg-white/[0.035] px-5 py-7 text-center">
+              <span className="font-data text-[9px] uppercase tracking-[0.24em] text-muted">
+                Readiness
+              </span>
+              <span
+                className={cn(
+                  "font-display mt-2 text-[34px] font-bold leading-none tracking-[-0.05em]",
+                  styles.text
+                )}
+              >
+                {humanLabel}
+              </span>
+              <span className="font-data mt-2 text-[11px] font-semibold tracking-[0.08em] text-muted">
+                {readiness.decision}
+              </span>
             </div>
-          </details>
 
-          <Button asChild variant="outline" className="mt-5 w-full sm:w-auto">
-            <Link href="/plan">{copy.action}</Link>
-          </Button>
+            {conditionMetrics && (
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <DeltaBadge
+                  label="Forma"
+                  delta={conditionMetrics.ctlDelta}
+                  colorClass="bg-amber"
+                />
+                <DeltaBadge
+                  label="Fatica"
+                  delta={conditionMetrics.atlDelta}
+                  colorClass="bg-telemetry-blue"
+                  invertTrend
+                />
+                <DeltaBadge
+                  label="Freschezza"
+                  delta={conditionMetrics.tsbDelta}
+                  colorClass="bg-telemetry-gold"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="max-w-xl">
+            <h3 className="font-display text-[24px] font-bold leading-tight tracking-[-0.03em] text-foreground">
+              {copy.phrase}
+            </h3>
+
+            <div className="mt-4 rounded-[22px] border border-border bg-white/[0.035] p-4">
+              <p className="font-data text-[11px] font-medium uppercase tracking-[0.12em] text-muted">
+                Perché
+              </p>
+              <div className="mt-3">
+                {signals.length > 0 ? (
+                  <SignalList signals={signals} />
+                ) : (
+                  <p className="text-sm leading-relaxed text-secondary">
+                    Nessun segnale critico rilevato nei dati di oggi.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <Button asChild className="mt-5 w-full sm:w-auto">
+              <Link href="/plan">{copy.action}</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </section>

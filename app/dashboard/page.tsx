@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { ConditionTrendChart } from "@/components/dashboard/condition-trend-chart";
 import { ReadinessHero } from "@/components/dashboard/readiness-hero";
 import { HrvMetric } from "@/components/dashboard/hrv-metric";
 import { SyncButton } from "@/components/dashboard/sync-button";
@@ -138,10 +139,6 @@ const DATA_QUALITY_COPY = {
     label: "Dati completi",
     className: "text-ready-go",
   },
-  3: {
-    label: "Dati buoni — manca il recupero mattutino (HRV/battito)",
-    className: "text-secondary",
-  },
   2: {
     label: "Dati base — il coach è più prudente",
     className: "text-ready-modify",
@@ -152,14 +149,54 @@ const DATA_QUALITY_COPY = {
   },
 } as const;
 
-function dataQualityCopy(level: number | null | undefined) {
-  if (level !== 1 && level !== 2 && level !== 3 && level !== 4) return null;
-  return DATA_QUALITY_COPY[level];
-}
-
 interface WellnessMeasurement {
   value: number;
   date: string;
+}
+
+function dataQualityCopy({
+  level,
+  currentDate,
+  hrv,
+  rhr,
+}: {
+  level: number | null | undefined;
+  currentDate: string | null;
+  hrv: WellnessMeasurement | null;
+  rhr: WellnessMeasurement | null;
+}) {
+  if (level === 1 || level === 2 || level === 4) {
+    return DATA_QUALITY_COPY[level];
+  }
+
+  if (level !== 3) return null;
+
+  const hrvToday = hrv != null && hrv.date === currentDate;
+  const rhrToday = rhr != null && rhr.date === currentDate;
+
+  if (!hrvToday && !rhrToday) {
+    return {
+      label: "Dati buoni — recupero mattutino non aggiornato oggi (HRV/battito)",
+      className: "text-secondary",
+    };
+  }
+  if (!hrvToday) {
+    return {
+      label: "Dati buoni — HRV non aggiornata oggi",
+      className: "text-secondary",
+    };
+  }
+  if (!rhrToday) {
+    return {
+      label: "Dati buoni — battito a riposo non aggiornato oggi",
+      className: "text-secondary",
+    };
+  }
+
+  return {
+    label: "Dati buoni — storico o RPE non ancora completi per qualità massima",
+    className: "text-secondary",
+  };
 }
 
 function latestMeasurement(
@@ -218,11 +255,15 @@ export default async function DashboardPage() {
       .maybeSingle(),
     supabase
       .from("athlete_profiles")
-      .select("preferences")
+      .select("nome, preferences")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
-  const name = userRow?.intervals_athlete_name ?? "atleta";
+  const dossierName =
+    typeof preferenceRow?.nome === "string" && preferenceRow.nome.trim().length > 0
+      ? preferenceRow.nome.trim()
+      : null;
+  const name = dossierName ?? userRow?.intervals_athlete_name ?? "atleta";
 
   // Ultimo snapshot: la dashboard mostra sempre il sync più recente.
   const { data: snapshot } = await supabase
@@ -261,12 +302,25 @@ export default async function DashboardPage() {
   const atl = wellnessToday?.atl ?? null;
   // TSB/ACWR: stesse semplici operazioni della readiness (lettura, non derivazione).
   const tsb = ctl != null && atl != null ? ctl - atl : null;
+  const previousCtl = wellnessPrevious?.ctl ?? null;
+  const previousAtl = wellnessPrevious?.atl ?? null;
+  const previousTsb =
+    previousCtl != null && previousAtl != null ? previousCtl - previousAtl : null;
+  const ctlDelta = ctl != null && previousCtl != null ? ctl - previousCtl : null;
+  const atlDelta = atl != null && previousAtl != null ? atl - previousAtl : null;
+  const tsbDelta = tsb != null && previousTsb != null ? tsb - previousTsb : null;
   const acwr = ctl != null && atl != null ? (ctl === 0 ? 0 : atl / ctl) : null;
   const ctlStatus = ctlState(ctl, wellnessPrevious?.ctl ?? null);
   const atlStatus = atlState(atl, ctl);
   const tsbStatus = tsbState(tsb);
   const acwrStatus = acwrState(acwr);
-  const dataQuality = dataQualityCopy(snapshot?.data_quality_level);
+  const selectedHrv = hrvProtocol === "sdnn" ? latestSdnn : latestRmssd;
+  const dataQuality = dataQualityCopy({
+    level: snapshot?.data_quality_level,
+    currentDate: wellnessToday?.date ?? null,
+    hrv: selectedHrv,
+    rhr: latestRhr,
+  });
 
   const recentActivities = mirror
     ? [...mirror.activities_90d]
@@ -319,7 +373,19 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {readiness && <ReadinessHero readiness={readiness} />}
+      {readiness && (
+        <ReadinessHero
+          readiness={readiness}
+          conditionMetrics={{
+            ctl,
+            atl,
+            tsb,
+            ctlDelta,
+            atlDelta,
+            tsbDelta,
+          }}
+        />
+      )}
 
       {mirror && (
         <section className="space-y-4">
@@ -374,6 +440,8 @@ export default async function DashboardPage() {
           </MetricStrip>
         </section>
       )}
+
+      {mirror && <ConditionTrendChart days={mirror.wellness_30d} />}
 
       {mirror && (
         <section className="space-y-4">

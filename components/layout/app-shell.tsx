@@ -9,7 +9,7 @@ export function AppShell({
   className?: string;
 }) {
   return (
-    <div className="min-h-screen bg-base">
+    <div className="min-h-screen bg-base font-body">
       <AppHeader />
       <main className={cn("app-container page-stack", className)}>
         {children}

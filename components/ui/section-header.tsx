@@ -22,12 +22,12 @@ export function SectionHeader({
     >
       <div>
         {label && (
-          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
+          <p className="font-data text-[11px] font-medium uppercase tracking-[0.12em] text-muted">
             {label}
           </p>
         )}
         {title && (
-          <h2 className="mt-1 text-lg font-medium tracking-[-0.015em] text-foreground">
+          <h2 className="font-display mt-1 text-xl font-bold tracking-[-0.02em] text-foreground">
             {title}
           </h2>
         )}

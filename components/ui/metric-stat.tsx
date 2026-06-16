@@ -41,7 +41,7 @@ export function MetricStat({
 
   return (
     <div className={cn("min-w-0 px-4 py-4 sm:px-5", className)}>
-      <dt className="flex items-center gap-1.5 text-xs font-medium text-muted">
+      <dt className="flex items-center gap-1.5 text-xs font-semibold text-muted">
         <span>
           {label} <span className="whitespace-nowrap">({acronym})</span>
         </span>
@@ -50,7 +50,7 @@ export function MetricStat({
           aria-label={`Cos'è ${label}`}
           aria-expanded={helpOpen}
           onClick={() => setHelpOpen((open) => !open)}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold leading-none text-muted transition-colors hover:border-amber hover:text-amber focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-white/[0.03] text-[10px] font-semibold leading-none text-muted transition-colors hover:border-amber hover:text-amber focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
         >
           ?
         </button>
@@ -58,7 +58,7 @@ export function MetricStat({
 
       <dd
         className={cn(
-          "mt-1.5 text-[26px] font-medium leading-none tracking-[-0.025em]",
+          "font-data mt-2 text-[28px] font-semibold leading-none tracking-[-0.04em]",
           accent ? "text-amber" : "text-foreground"
         )}
       >
@@ -66,9 +66,9 @@ export function MetricStat({
       </dd>
 
       {status && (
-        <p className={cn("mt-2 text-xs leading-5", toneClasses[tone])}>
-          {direction === "up" && <span aria-hidden>↑ </span>}
-          {direction === "down" && <span aria-hidden>↓ </span>}
+        <p className={cn("font-data mt-2 text-xs leading-5", toneClasses[tone])}>
+          {direction === "up" && <span aria-hidden>↗ </span>}
+          {direction === "down" && <span aria-hidden>↘ </span>}
           {status}
         </p>
       )}
