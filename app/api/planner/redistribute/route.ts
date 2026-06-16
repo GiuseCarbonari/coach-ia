@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 
 import type { BuiltSession } from "@/lib/planner/build-week";
+import type { MirrorData } from "@/lib/intervals/sync";
 import type { Phase } from "@/lib/planner/phase-detector";
 import {
   redistributeWeek,
   type RedistributeResult,
 } from "@/lib/planner/redistribute";
-import { DAY_KEYS, type DayKey } from "@/lib/planner/session-selector";
+import { DAY_KEYS, effectiveMinGapDays, type DayKey } from "@/lib/planner/session-selector";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -182,6 +183,22 @@ export async function POST(request: Request) {
     durata_max_weekend_min: profileData.durata_max_weekend_min ?? null,
   };
 
+  // TSB/RI odierni (letti, non ricalcolati) per l'eccezione "dure consecutive" (§3.1).
+  const { data: snapshot } = await supabase
+    .from("athlete_metrics_snapshots")
+    .select("mirror_data")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const mirror = (snapshot?.mirror_data ?? null) as MirrorData | null;
+  const wellness = mirror?.wellness_30d ?? [];
+  const ctlToday = wellness.at(-1)?.ctl ?? null;
+  const atlToday = wellness.at(-1)?.atl ?? null;
+  const tsb = ctlToday != null && atlToday != null ? Number((ctlToday - atlToday).toFixed(1)) : null;
+  const ri = mirror?.readiness_today?.signals.find((s) => s.name === "ri")?.value ?? null;
+  const minGapDays = effectiveMinGapDays(tsb, ri);
+
   let result: RedistributeResult;
   try {
     result = redistributeWeek(
@@ -189,7 +206,8 @@ export async function POST(request: Request) {
       blockedDay,
       remainingDays,
       dossier,
-      plan.phase
+      plan.phase,
+      minGapDays
     );
   } catch (err) {
     console.error("redistributeWeek fallita:", err);

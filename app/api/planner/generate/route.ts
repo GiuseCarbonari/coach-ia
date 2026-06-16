@@ -115,8 +115,12 @@ export async function POST() {
   const atlToday = wellness.at(-1)?.atl ?? null;
   // ACWR = atl/ctl (lettura/operazione semplice, come readiness e dashboard).
   const acwr = ctlToday != null && atlToday != null ? (ctlToday === 0 ? 0 : atlToday / ctlToday) : null;
+  // TSB = CTL - ATL: stessa operazione semplice dell'ACWR sopra, non ricalcolo del readiness.
+  const tsb = ctlToday != null && atlToday != null ? Number((ctlToday - atlToday).toFixed(1)) : null;
   const ri = mirror.readiness_today?.signals.find((s) => s.name === "ri")?.value ?? null;
   const readinessDecision = mirror.readiness_today?.decision ?? "GO";
+  // Età del mirror (checklist §11C item 6, Temporal Data Validation).
+  const dataAgeHours = Number(((Date.now() - Date.parse(mirror.fetched_at)) / 3_600_000).toFixed(1));
 
   // --- daysToEvent (dossier) ------------------------------------------------
   const eventDate = row?.data_obiettivo ?? row?.gare_target?.[0]?.data ?? null;
@@ -148,13 +152,17 @@ export async function POST() {
   const selected = selectWeekSessions(
     phaseResult.phase,
     dossier,
-    { decision: readinessDecision, dayKey: todayKey },
+    { decision: readinessDecision, dayKey: todayKey, tsb, ri },
     { levers },
     availableDays
   );
 
   const weekStart = currentMonday();
-  const week = buildWeek(weekStart, selected, dossier, profile, phaseResult.phase);
+  const week = buildWeek(weekStart, selected, dossier, profile, phaseResult.phase, {
+    tsb,
+    ri,
+    data_age_hours: dataAgeHours,
+  });
 
   // --- Narrativa AI opzionale (solo spiegazione) ----------------------------
   let narrative: string | null = null;
@@ -239,9 +247,14 @@ export async function POST() {
       readiness_decision_snapshot: mirror.readiness_today ?? null,
     }));
 
+  let decisionsWarning: string | null = null;
   if (decisionRows.length > 0) {
     const { error: decError } = await admin.from("coach_decisions").insert(decisionRows);
-    if (decError) console.error("Salvataggio coach_decisions fallito:", decError.message);
+    if (decError) {
+      console.error("Salvataggio coach_decisions fallito:", decError.message);
+      decisionsWarning =
+        "Piano generato, ma il salvataggio delle righe di audit (coach_decisions) è fallito.";
+    }
   }
 
   await admin.from("audit_logs").insert({
@@ -266,5 +279,6 @@ export async function POST() {
     week_sessions: week.sessions,
     audit: week.audit,
     narrative,
+    warning: decisionsWarning,
   });
 }

@@ -59,6 +59,21 @@ export interface PlannerReadiness {
   decision: "GO" | "MODIFY" | "SKIP";
   /** Giorno della settimana a cui si riferisce, o null se sconosciuto. */
   dayKey: DayKey | null;
+  /** TSB odierno (CTL - ATL, letto dal mirror). Null se non disponibile. */
+  tsb?: number | null;
+  /** Recovery Index odierno (letto dal mirror). Null se non disponibile. */
+  ri?: number | null;
+}
+
+/** Soglie dell'eccezione "sedute dure consecutive" (WORKOUT_REFERENCE.md §3.1). */
+const BACK_TO_BACK_RI_MIN = 0.85;
+
+/**
+ * Distanza minima (in giorni) richiesta tra sedute dure. 2 di norma (48h);
+ * 1 (consecutive ammesse) solo se TSB > 0 e RI ≥ 0.85 (§3.1, eccezione).
+ */
+export function effectiveMinGapDays(tsb: number | null, ri: number | null): number {
+  return tsb != null && tsb > 0 && ri != null && ri >= BACK_TO_BACK_RI_MIN ? 1 : 2;
 }
 
 export interface PlannerLimiters {
@@ -83,21 +98,22 @@ export function computeAvailableDays(dossier: PlannerDossier): DayKey[] {
 }
 
 /** Distanza minima in giorni da tutti i giorni "duri" già piazzati (48h ⇒ ≥2). */
-function respects48h(day: DayKey, hardDays: DayKey[]): boolean {
-  return hardDays.every((h) => Math.abs(dayIndex(day) - dayIndex(h)) >= 2);
+function respects48h(day: DayKey, hardDays: DayKey[], minGapDays: number): boolean {
+  return hardDays.every((h) => Math.abs(dayIndex(day) - dayIndex(h)) >= minGapDays);
 }
 
-/** Primo giorno disponibile tra i candidati che rispetta lo spacing 48h. */
+/** Primo giorno disponibile tra i candidati che rispetta lo spacing minimo. */
 function pickDay(
   candidates: DayKey[],
   available: Set<DayKey>,
   taken: Set<DayKey>,
   hardDays: DayKey[],
-  enforce48h: boolean
+  enforce48h: boolean,
+  minGapDays = 2
 ): DayKey | null {
   for (const d of candidates) {
     if (!available.has(d) || taken.has(d)) continue;
-    if (enforce48h && !respects48h(d, hardDays)) continue;
+    if (enforce48h && !respects48h(d, hardDays, minGapDays)) continue;
     return d;
   }
   return null;
@@ -256,6 +272,7 @@ export function selectWeekSessions(
   const lev = new Set(gapAnalysis?.levers ?? []);
   const maxHard =
     (dossier.disponibilita_ore_sett ?? 0) > HARD_LIMIT_LOW_HOURS ? 3 : 2;
+  const minGapDays = effectiveMinGapDays(readiness.tsb ?? null, readiness.ri ?? null);
 
   // readiness si applica solo al giorno indicato (oggi).
   const readinessDay = readiness.dayKey;
@@ -338,11 +355,16 @@ export function selectWeekSessions(
         : slot === "secondary_hard"
           ? secondaryCandidates
           : thirdCandidates;
-    const day = pickDay(candidates, available, taken, hardDays, true);
-    if (!day) continue; // niente slot valido che rispetti il 48h: si salta
+    const day = pickDay(candidates, available, taken, hardDays, true, minGapDays);
+    if (!day) continue; // niente slot valido che rispetti il gap minimo: si salta
 
     let libId = choice.library_id;
     const extra: string[] = [];
+    if (minGapDays === 1 && hardDays.some((h) => Math.abs(dayIndex(day) - dayIndex(h)) === 1)) {
+      extra.push(
+        "Sedute dure consecutive ammesse: TSB>0 e RI≥0.85 (§3.1, eccezione al gap 48h)."
+      );
+    }
     // Readiness del giorno: MODIFY → SS-4; SKIP → recupero (niente dura).
     if (isReadinessDay(day) && readiness.decision === "MODIFY") {
       libId = MODIFY_DOWNGRADE_ID;
@@ -430,14 +452,14 @@ export function countHardSessions(sessions: SelectedSession[]): number {
   return sessions.filter((s) => s.is_hard).length;
 }
 
-/** true se NON ci sono due sedute dure in giorni consecutivi (§3.1, 48h). */
-export function hardSpacingOk(sessions: SelectedSession[]): boolean {
+/** true se le sedute dure rispettano il gap minimo (§3.1, 48h salvo eccezione). */
+export function hardSpacingOk(sessions: SelectedSession[], minGapDays = 2): boolean {
   const hardIdx = sessions
     .filter((s) => s.is_hard)
     .map((s) => DAY_KEYS.indexOf(s.day))
     .sort((a, b) => a - b);
   for (let i = 1; i < hardIdx.length; i++) {
-    if (hardIdx[i] - hardIdx[i - 1] < 2) return false;
+    if (hardIdx[i] - hardIdx[i - 1] < minGapDays) return false;
   }
   return true;
 }

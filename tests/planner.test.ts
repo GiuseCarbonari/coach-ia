@@ -7,6 +7,7 @@ import { redistributeWeek } from "../lib/planner/redistribute";
 import {
   computeAvailableDays,
   countHardSessions,
+  effectiveMinGapDays,
   hardSpacingOk,
   selectWeekSessions,
   type PlannerDossier,
@@ -119,6 +120,38 @@ test("selectWeekSessions: readiness MODIFY oggi declassa la dura a SS-4", () => 
   );
   const tue = sessions.find((s) => s.day === "tue");
   assert.equal(tue?.library_id, "SS-4", "MODIFY → SS-4");
+});
+
+test("effectiveMinGapDays: eccezione solo con TSB>0 e RI≥0.85 (§3.1)", () => {
+  assert.equal(effectiveMinGapDays(5, 0.9), 1, "TSB>0 e RI≥0.85 → gap 1 (consecutive ammesse)");
+  assert.equal(effectiveMinGapDays(-1, 0.9), 2, "TSB negativo → resta il gap di 48h");
+  assert.equal(effectiveMinGapDays(5, 0.8), 2, "RI sotto soglia → resta il gap di 48h");
+  assert.equal(effectiveMinGapDays(null, null), 2, "dati assenti → default prudente 48h");
+});
+
+test("selectWeekSessions: senza eccezione la seconda dura non trova spazio a 24h", () => {
+  const dossier = { ...DOSSIER, giorni_impossibili: ["mon", "fri", "sat", "sun"] };
+  const avail = computeAvailableDays(dossier);
+  const sessions = selectWeekSessions("build", dossier, GO, { levers: [] }, avail);
+  assert.equal(
+    countHardSessions(sessions),
+    1,
+    "con soli tue/wed/thu disponibili, senza eccezione la seconda dura resta non piazzata"
+  );
+});
+
+test("selectWeekSessions: TSB>0 e RI≥0.85 ammette due dure consecutive (§3.1 eccezione)", () => {
+  const dossier = { ...DOSSIER, giorni_impossibili: ["mon", "fri", "sat", "sun"] };
+  const avail = computeAvailableDays(dossier);
+  const sessions = selectWeekSessions(
+    "build",
+    dossier,
+    { decision: "GO", dayKey: null, tsb: 5, ri: 0.9 },
+    { levers: [] },
+    avail
+  );
+  assert.equal(countHardSessions(sessions), 2, "con l'eccezione la seconda dura viene piazzata anche a 24h");
+  assert.ok(hardSpacingOk(sessions, 1), "rispetta il gap minimo di 1 giorno consentito dall'eccezione");
 });
 
 test("buildWeek: date coerenti, validation_metadata e durate cappate", () => {

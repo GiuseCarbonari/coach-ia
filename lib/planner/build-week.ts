@@ -16,6 +16,7 @@ import type { Phase } from "@/lib/planner/phase-detector";
 import {
   DAY_KEYS,
   countHardSessions,
+  effectiveMinGapDays,
   hardSpacingOk,
   type DayKey,
   type SelectedSession,
@@ -142,6 +143,10 @@ export interface WeekAudit {
   hard_sessions: number;
   max_hard_allowed: number;
   hard_spacing_ok: boolean;
+  /** Gap minimo applicato in giorni: 2 (48h) salvo eccezione TSB/RI (§3.1) → 1. */
+  min_gap_days_applied: number;
+  /** Età del mirror dati in ore (checklist §11C item 6). Null se non passata. */
+  data_age_hours: number | null;
   volume_hours_estimate: number;
   easy_time_ratio_estimate: number | null;
   polarization_note: string;
@@ -225,7 +230,12 @@ export function buildWeek(
     sport_principali?: string[];
   },
   athleteProfile: AthleteProfileData | null,
-  phase: Phase
+  phase: Phase,
+  /**
+   * TSB/RI odierni (eccezione §3.1) + età del mirror dati in ore (checklist
+   * §11C item 6, Temporal Data Validation). Tutti opzionali/null se assenti.
+   */
+  auditContext?: { tsb: number | null; ri: number | null; data_age_hours: number | null } | null
 ): BuiltWeek {
   const hasInputs = athleteProfile?.cp_wprime?.cp_w != null && athleteProfile.weight_kg != null;
   const confidence: "high" | "medium" | "low" = hasInputs ? "high" : "medium";
@@ -288,7 +298,8 @@ export function buildWeek(
   // --- Audit settimana (Section 11 B §6) ------------------------------------
   const hard = countHardSessions(sessions);
   const maxHard = (dossier.disponibilita_ore_sett ?? 0) > 10 ? 3 : 2;
-  const spacingOk = hardSpacingOk(sessions);
+  const minGapDays = effectiveMinGapDays(auditContext?.tsb ?? null, auditContext?.ri ?? null);
+  const spacingOk = hardSpacingOk(sessions, minGapDays);
 
   const totalMin = built.reduce((sum, s) => sum + (s.estimated_duration_min ?? 0), 0);
   const hardMin = built.reduce(
@@ -299,7 +310,15 @@ export function buildWeek(
   // (le dure contengono comunque WU/CD in Z1–Z2, qui non scorporati).
   const easyRatio = totalMin > 0 ? Number(((totalMin - hardMin) / totalMin).toFixed(2)) : null;
 
-  const checklist_passed: Array<number | string> = [0, 1, 3, 4, 8];
+  // Item 9 (Rolling Phase Alignment) e 10 (Protocol Version & Framework
+  // Citations) sono sempre verificabili qui: la fase è sempre rilevata da
+  // detectPhase e protocol_version/frameworks_cited sono sempre popolati.
+  // Item 2, 5, 5b, 7 della checklist Section 11 C presuppongono un'AI che
+  // legge JSON ad ogni turno conversazionale: non si applicano a questa
+  // pipeline deterministica e restano deliberatamente fuori da entrambi gli
+  // array (nessun "passed" finto, nessun "failed" su un controllo che qui
+  // non ha senso).
+  const checklist_passed: Array<number | string> = [0, 1, 3, 4, 8, 9, 10];
   const checklist_failed: Array<number | string> = [];
   // §4: composizione/spacing. §3: distribuzione intensità.
   if (hard <= maxHard) checklist_passed.push("4-session-count");
@@ -308,6 +327,15 @@ export function buildWeek(
   else checklist_failed.push("3.1-48h-spacing");
   if (easyRatio == null || easyRatio >= 0.75) checklist_passed.push("3-intensity-distribution");
   else checklist_failed.push("3-intensity-distribution");
+  // Item 6 (Temporal Data Validation): mirror >48h → richiedere un refresh.
+  const dataAgeHours = auditContext?.data_age_hours ?? null;
+  if (dataAgeHours == null) {
+    // Età ignota (chiamante non l'ha passata): non si dichiara un esito.
+  } else if (dataAgeHours < 48) {
+    checklist_passed.push(6);
+  } else {
+    checklist_failed.push(6);
+  }
 
   const audit: WeekAudit = {
     phase,
@@ -315,6 +343,8 @@ export function buildWeek(
     hard_sessions: hard,
     max_hard_allowed: maxHard,
     hard_spacing_ok: spacingOk,
+    min_gap_days_applied: minGapDays,
+    data_age_hours: dataAgeHours,
     volume_hours_estimate: Number((totalMin / 60).toFixed(1)),
     easy_time_ratio_estimate: easyRatio,
     polarization_note:

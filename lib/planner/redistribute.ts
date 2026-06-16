@@ -63,9 +63,9 @@ function dayIndex(day: DayKey): number {
   return DAY_KEYS.indexOf(day);
 }
 
-/** true se `day` dista ≥2 giorni da tutte le sedute dure in `hardDays`. */
-function respects48h(day: DayKey, hardDays: DayKey[]): boolean {
-  return hardDays.every((h) => Math.abs(dayIndex(day) - dayIndex(h)) >= 2);
+/** true se `day` dista ≥minGapDays giorni da tutte le sedute dure in `hardDays`. */
+function respects48h(day: DayKey, hardDays: DayKey[], minGapDays: number): boolean {
+  return hardDays.every((h) => Math.abs(dayIndex(day) - dayIndex(h)) >= minGapDays);
 }
 
 function capForDay(
@@ -141,6 +141,9 @@ function rebuildTitle(session: BuiltSession, newDay: DayKey): string {
  *                      chiamante; NON includono `blockedDay`.
  * @param dossier       Subset del dossier per i cap di durata e disponibilità.
  * @param phase         Fase rilevata (per ordinare la priorità delle dure).
+ * @param minGapDays    Gap minimo richiesto tra dure: 2 (48h) salvo eccezione
+ *                      TSB/RI (§3.1) → 1. Calcolato dal chiamante con
+ *                      `effectiveMinGapDays` (session-selector.ts).
  */
 export function redistributeWeek(
   currentPlan: BuiltSession[],
@@ -151,7 +154,8 @@ export function redistributeWeek(
     durata_max_weekday_min: number | null;
     durata_max_weekend_min: number | null;
   },
-  phase: Phase
+  phase: Phase,
+  minGapDays = 2
 ): RedistributeResult {
   const week = new Map<DayKey, BuiltSession>();
   for (const s of currentPlan) week.set(s.day as DayKey, s);
@@ -235,7 +239,7 @@ export function redistributeWeek(
       if (d === blockedDay) continue;
       const existing = week.get(d);
       if (!existing || existing.is_hard) continue; // già duro: non sovrascrivere
-      if (!respects48h(d, otherHardDays)) continue; // violerebbe 48h
+      if (!respects48h(d, otherHardDays, minGapDays)) continue; // violerebbe il gap minimo
       const cap = capForDay(d, dossier);
       if (cap != null && blockedDuration > cap) continue; // non ci sta nel cap
       targetDay = d;
@@ -305,7 +309,7 @@ export function redistributeWeek(
     .sort((a, b) => a.idx - b.idx);
 
   for (let i = 1; i < hardPositions.length; i++) {
-    if (hardPositions[i].idx - hardPositions[i - 1].idx < 2) {
+    if (hardPositions[i].idx - hardPositions[i - 1].idx < minGapDays) {
       // Spacing violato: rimuovi la seduta a priorità più bassa.
       const a = hardPositions[i - 1];
       const b = hardPositions[i];

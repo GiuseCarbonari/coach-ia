@@ -708,8 +708,8 @@ Il piano settimanale deve rispettare:
 
 - disponibilità ore utente;
 - giorni disponibili;
-- massimo 2 sedute intense a settimana per atleta amatoriale standard;
-- niente sedute intense back-to-back, salvo casi specifici;
+- massimo 2 sedute intense a settimana per atleta amatoriale standard, 3 se la disponibilità supera 10h/settimana (Section 11 B §4);
+- niente sedute intense back-to-back, salvo eccezione TSB>0 e RI≥0.85 (Section 11 B §4, WORKOUT_REFERENCE.md §3.1);
 - almeno 1 giorno facile o riposo dopo seduta molto intensa;
 - lungo nel weekend se indicato;
 - progressione carico prudente;
