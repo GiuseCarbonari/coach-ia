@@ -26,7 +26,10 @@ export function BottomTabBar() {
       aria-label="Navigazione principale"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-base/90 backdrop-blur-xl"
     >
-      <div className="mx-auto flex max-w-[640px] items-center justify-around px-2 py-2.5">
+      <div
+        style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom))" }}
+        className="mx-auto flex max-w-[640px] items-center justify-around px-2 pt-2.5"
+      >
         {TABS.map((tab) => {
           const active =
             pathname === tab.href || pathname.startsWith(`${tab.href}/`);

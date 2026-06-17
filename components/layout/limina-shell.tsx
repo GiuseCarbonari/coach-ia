@@ -16,6 +16,10 @@ export function LiminaShell({
   return (
     <div className="min-h-screen bg-base font-body">
       <main
+        style={{
+          paddingLeft: "max(1.25rem, env(safe-area-inset-left))",
+          paddingRight: "max(1.25rem, env(safe-area-inset-right))",
+        }}
         className={cn(
           "mx-auto flex w-full max-w-[640px] flex-col gap-5 px-5 pb-28 pt-8 sm:px-6",
           className
