@@ -10,6 +10,7 @@ import {
   sessionToEvent,
   type IntervalsWorkoutEvent,
 } from "@/lib/planner/intervals-workout-format";
+import { selectOrphanEvents } from "@/lib/planner/reconcile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -42,6 +43,63 @@ function eventsFromPlan(
   return plan.sessions
     .filter((session) => !session.rest && session.library_id != null)
     .map((session) => sessionToEvent(session, userId, plan.week_start));
+}
+
+/** Aggiunge giorni a una data ISO (YYYY-MM-DD), in UTC, senza dipendenze. */
+function addDays(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days))
+    .toISOString()
+    .slice(0, 10);
+}
+
+interface ReconcileResult {
+  deleted: Array<number | string>;
+  failed: Array<number | string>;
+  error?: string;
+}
+
+/**
+ * Rimuove gli eventi orfani: i NOSTRI workout (external_id con prefisso
+ * `coach-ia-`) presenti sul calendario nella settimana del piano ma non più
+ * nel set appena inviato — è il caso della settimana ridistribuita, dove una
+ * seduta cambia giorno o tipo e l'upsert (per external_id) crea il nuovo
+ * evento lasciando orfano il vecchio. Il filtro sul prefisso garantisce che
+ * non venga MAI cancellato un evento non creato da questa app.
+ *
+ * Best-effort: ogni errore è catturato e riportato, ma non fa fallire il push
+ * già completato (il piano nuovo è comunque scritto).
+ */
+async function deleteOrphans(
+  fetcher: IntervalsFetcher,
+  weekStart: string,
+  keepExternalIds: Set<string>
+): Promise<ReconcileResult> {
+  const deleted: Array<number | string> = [];
+  const failed: Array<number | string> = [];
+  try {
+    const onCalendar = await fetcher.getEvents(
+      weekStart,
+      addDays(weekStart, 6),
+      "WORKOUT"
+    );
+    const orphans = selectOrphanEvents(onCalendar, keepExternalIds);
+    for (const orphan of orphans) {
+      try {
+        await fetcher.deleteEvent(orphan.id);
+        deleted.push(orphan.id);
+      } catch {
+        failed.push(orphan.id);
+      }
+    }
+    return { deleted, failed };
+  } catch (error) {
+    return {
+      deleted,
+      failed,
+      error: error instanceof Error ? error.message : "reconcile_failed",
+    };
+  }
 }
 
 async function readConfirmation(request: Request): Promise<boolean> {
@@ -191,8 +249,9 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
+  const fetcher = new IntervalsFetcher(accessToken);
   try {
-    await new IntervalsFetcher(accessToken).pushWorkoutEvents(events);
+    await fetcher.pushWorkoutEvents(events);
   } catch (error) {
     const status = error instanceof IntervalsApiError ? error.status : undefined;
     const pushErrors: PushError[] = events.map((event) => ({
@@ -233,6 +292,11 @@ export async function POST(request: Request) {
     );
   }
 
+  // Riconciliazione: dopo l'upsert, rimuove i nostri eventi non più nel piano
+  // (settimana ridistribuita). Best-effort, non fa fallire il push riuscito.
+  const keepExternalIds = new Set(events.map((event) => event.external_id));
+  const reconcile = await deleteOrphans(fetcher, plan.week_start, keepExternalIds);
+
   const pushedAt = new Date().toISOString();
   const eventUids = events.map((event) => event.uid);
   const { error: updateError } = await admin
@@ -253,6 +317,7 @@ export async function POST(request: Request) {
       week_start: plan.week_start,
       status: updateError ? "pushed_metadata_failed" : "success",
       pushed_at: pushedAt,
+      reconcile,
       events,
     },
   });
@@ -275,6 +340,7 @@ export async function POST(request: Request) {
     mode: "commit",
     pushed_at: pushedAt,
     intervals_event_uids: eventUids,
+    reconciled: reconcile,
     events,
   });
 }

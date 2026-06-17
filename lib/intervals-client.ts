@@ -78,7 +78,7 @@ export interface IntervalsEventAttachment {
   url: string | null;
 }
 
-/** Evento calendario (gara). Tipato loose: usiamo solo un sottoinsieme. */
+/** Evento calendario (gara o workout). Tipato loose: usiamo solo un sottoinsieme. */
 export interface IntervalsEvent {
   id: number | string;
   name: string | null;
@@ -87,6 +87,8 @@ export interface IntervalsEvent {
   type: string | null;
   distance: number | null;
   attachments?: IntervalsEventAttachment[] | null;
+  /** Presente sui WORKOUT creati da app OAuth; round-trip verificato (M8). */
+  external_id?: string | null;
 }
 
 export interface IntervalsActivity {
@@ -163,6 +165,20 @@ export class IntervalsFetcher {
     }
   }
 
+  /** DELETE: 404 = già assente (non è un errore per la riconciliazione). */
+  private async del(path: string): Promise<boolean> {
+    const response = await fetch(INTERVALS_API_BASE + path, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+      cache: "no-store",
+    });
+    if (response.status === 404) return false;
+    if (!response.ok) {
+      throw new IntervalsApiError(response.status, path);
+    }
+    return true;
+  }
+
   /** GET /api/v1/athlete/0 — profilo (weight, resting_hr, zones, ftp). */
   getProfile(): Promise<IntervalsProfileRaw> {
     return this.get<IntervalsProfileRaw>("/athlete/0");
@@ -226,6 +242,16 @@ export class IntervalsFetcher {
       "/athlete/0/events/bulk?upsert=true&upsertOnUid=true&updatePlanApplied=true",
       events
     );
+  }
+
+  /**
+   * DELETE /api/v1/athlete/0/events/{id} — cancella un evento per id numerico
+   * (verificato M8). Ritorna false se era già assente (404). Usato dalla
+   * riconciliazione del push per rimuovere gli eventi orfani di una settimana
+   * ridistribuita.
+   */
+  deleteEvent(eventId: number | string): Promise<boolean> {
+    return this.del(`/athlete/0/events/${encodeURIComponent(String(eventId))}`);
   }
 
   /**

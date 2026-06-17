@@ -159,8 +159,30 @@ affidabile è `external_id` insieme a `upsert=true`.
 
 ### `DELETE /api/v1/athlete/0/events/{eventId}`
 
-Endpoint ufficiale per cancellare un evento calendario. Usato solo dal probe
-di sviluppo `/api/debug/inspect-events` per rimuovere gli eventi `TEST DEDUP`.
+Endpoint ufficiale per cancellare un evento calendario. Cancella per **id
+numerico** (non per `external_id`/`uid`). Risponde 404 se l'evento è già
+assente. Client: `IntervalsFetcher.deleteEvent`.
+
+**Probe riconciliazione (17 giugno 2026, via `/api/debug/inspect-events`
+`{probe:"reconcile"}`):** verifica per il fix "settimana cambiata → eventi
+orfani". Due eventi WORKOUT inviati col nostro schema `external_id`
+(`coach-ia-…`) e la query di produzione `upsert=true&upsertOnUid=true`:
+
+- il **body di risposta del bulk POST** è un array degli eventi creati, ognuno
+  con il proprio **`id` numerico** e l'**`external_id` preservato** uguale a
+  quello inviato; il nostro `uid` viene invece **rimpiazzato** da Intervals con
+  un UUID proprio. → la chiave anti-duplicato resta `external_id`, e l'id
+  numerico per la DELETE è disponibile sia qui sia dal GET sotto;
+- **`GET /athlete/0/events?...&category=WORKOUT`** espone per ogni evento sia
+  `id` (numerico) sia `external_id` (round-trip esatto col valore inviato);
+- la DELETE per id ha rimosso entrambi gli eventi test (0 fallimenti).
+
+**Strategia di push idempotente (implementata M8 fix):** dopo il bulk upsert,
+si fa GET dei WORKOUT della settimana `[week_start, week_start+6]` e si
+cancellano per id i **soli eventi nostri** (`external_id` con prefisso
+`coach-ia-`) il cui `external_id` non è più nel piano corrente. Best-effort:
+un fallimento della riconciliazione non fa fallire il push (il piano nuovo è
+già scritto). Filtro sul prefisso = non si tocca mai un evento non nostro.
 
 Sintassi workout verificata nel campo `description`:
 

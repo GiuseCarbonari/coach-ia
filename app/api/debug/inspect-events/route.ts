@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { decryptToken } from "@/lib/crypto";
 import { runDedupProbe } from "@/lib/intervals/dedup-probe";
+import { runReconcileProbe } from "@/lib/intervals/reconcile-probe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -238,13 +239,16 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as {
     confirmed?: unknown;
+    probe?: unknown;
   } | null;
   if (body?.confirmed !== true) {
     return NextResponse.json(
-      { error: "Conferma esplicita richiesta per il probe dedup" },
+      { error: "Conferma esplicita richiesta per il probe" },
       { status: 400 }
     );
   }
+  // Default invariato = dedup probe; "reconcile" = probe lookup-id per il fix orfani.
+  const probe = body.probe === "reconcile" ? "reconcile" : "dedup";
 
   const supabase = createClient();
   const {
@@ -277,14 +281,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await runDedupProbe(
-      decryptToken(connection.access_token_encrypted)
-    );
+    const accessToken = decryptToken(connection.access_token_encrypted);
+    const result =
+      probe === "reconcile"
+        ? await runReconcileProbe(accessToken)
+        : await runDedupProbe(accessToken);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Probe dedup fallito",
+        error: error instanceof Error ? error.message : "Probe fallito",
       },
       { status: 502 }
     );

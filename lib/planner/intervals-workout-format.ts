@@ -4,6 +4,13 @@ import type { BuiltSession } from "@/lib/planner/build-week";
 import type { DayKey } from "@/lib/planner/session-selector";
 import { getTemplate } from "@/lib/planner/workout-library";
 
+/**
+ * Prefisso degli external_id/uid creati da questa app. Serve a riconoscere i
+ * "nostri" eventi sul calendario Intervals (per la riconciliazione/cancellazione
+ * degli orfani) senza mai toccare eventi di altre origini.
+ */
+export const WORKOUT_UID_PREFIX = "coach-ia-";
+
 export const FTP_ZONE_RANGES = {
   Z1: "50-60%",
   Z2: "60-75%",
@@ -257,7 +264,7 @@ export function stableWorkoutUid(
     .update(`${userId}\n${date}\n${libraryId}`)
     .digest("hex")
     .slice(0, 32);
-  const uid = `coach-ia-${digest}`;
+  const uid = `${WORKOUT_UID_PREFIX}${digest}`;
   if (process.env.NODE_ENV !== "production") {
     console.log("UID generato:", uid, "per", {
       userId,
