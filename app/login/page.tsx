@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
  * Pagina /login — autenticazione Supabase (email + password).
  *
  * Solo la UI è cambiata rispetto alla versione MVP: tab Accedi/Registrati,
- * card centrata, stile Coach IA dark premium. La logica di auth resta invariata —
+ * card centrata, stile Limina dark premium. La logica di auth resta invariata —
  * signInWithPassword / signUp, poi redirect a /dashboard dove il middleware
  * decide se mandare l'utente a /connect (Intervals non ancora collegato).
  */
@@ -103,21 +103,33 @@ export default function LoginPage() {
     }`;
 
   const inputClass =
-    "h-10 rounded-[9px] border-[0.5px] border-border bg-base px-3 text-sm text-foreground placeholder:text-muted outline-none transition-colors focus:ring-2 focus:ring-amber";
+    "h-10 rounded-[9px] border-[0.5px] border-border bg-base px-3 text-sm text-foreground placeholder:text-muted outline-none transition-colors focus:ring-2 focus:ring-brand";
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-base px-4 py-10">
       <div className="w-full max-w-[420px] rounded-2xl border-[0.5px] border-border bg-surface p-8">
         {/* 1. Logo / nome */}
         <div className="mb-6 flex flex-col items-center text-center">
-          <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-[9px] bg-amber text-[18px] font-bold text-amber-on">
-            C
-          </span>
-          <p className="text-[20px] font-medium tracking-tight text-foreground">
-            Coach IA
+          <svg width="36" height="36" viewBox="0 0 58 58" fill="none" aria-label="Limina logo" className="mb-3">
+            <circle
+              cx="29" cy="29" r="22"
+              stroke="url(#lgLogin)"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray="138 0"
+            />
+            <defs>
+              <linearGradient id="lgLogin" x1="0" y1="0" x2="58" y2="58">
+                <stop offset="0%" stopColor="#5b8def" />
+                <stop offset="100%" stopColor="#7fc8c0" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <p className="font-serif text-[20px] font-medium tracking-tight text-foreground">
+            Limina
           </p>
           <p className="mt-1 text-[13px] text-muted">
-            Accedi al tuo account Coach IA
+            Accedi al tuo account Limina
           </p>
         </div>
 
@@ -141,8 +153,8 @@ export default function LoginPage() {
 
         <p className="mb-5 text-center text-[13px] leading-5 text-muted">
           {isSignin
-            ? "Usa le credenziali di Coach IA. Il collegamento a Intervals.icu resta separato."
-            : "Crea prima il tuo account Coach IA. Collegherai Intervals.icu nel passaggio successivo."}
+            ? "Usa le credenziali di Limina. Il collegamento a Intervals.icu resta separato."
+            : "Crea prima il tuo account Limina. Collegherai Intervals.icu nel passaggio successivo."}
         </p>
 
         {/* 3. Form */}
@@ -198,11 +210,11 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* 4. Bottone primario ambra */}
+          {/* 4. Bottone primario brand */}
           <button
             type="submit"
             disabled={loading}
-            className="h-10 w-full rounded-[9px] bg-amber text-sm font-medium text-amber-on transition-colors hover:bg-amber-hover disabled:pointer-events-none disabled:opacity-50"
+            className="h-10 w-full rounded-[9px] bg-brand text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:pointer-events-none disabled:opacity-50"
           >
             {loading
               ? "Attendere…"

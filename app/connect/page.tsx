@@ -2,7 +2,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 
 /**
- * Secondo passaggio del setup: l'utente è già autenticato a Coach IA e
+ * Secondo passaggio del setup: l'utente è già autenticato a Limina e
  * autorizza separatamente l'accesso ai propri dati Intervals.icu.
  */
 export default function ConnectPage() {
@@ -16,7 +16,7 @@ export default function ConnectPage() {
           Collega Intervals.icu
         </h1>
         <p className="max-w-md text-secondary">
-          Hai effettuato l&apos;accesso a Coach IA. Ora collega Intervals.icu
+          Hai effettuato l&apos;accesso a Limina. Ora collega Intervals.icu
           per importare attività, carico e profilo di potenza.
         </p>
         <Button asChild size="lg">
