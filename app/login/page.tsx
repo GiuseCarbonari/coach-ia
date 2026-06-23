@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
-import { setBrowserRememberAccess } from "@/lib/supabase/session-persistence";
 
 type Mode = "signin" | "signup" | "reset";
 
@@ -116,7 +115,6 @@ export default function LoginPage() {
       setError(localizeError(error.message));
       return;
     }
-    setBrowserRememberAccess(rememberMe);
     router.push("/dashboard");
     router.refresh();
   }
@@ -142,7 +140,6 @@ export default function LoginPage() {
       );
       return;
     }
-    setBrowserRememberAccess(true);
     router.push("/dashboard");
     router.refresh();
   }
