@@ -1,5 +1,6 @@
 import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
 import { AppTour } from "@/components/layout/app-tour";
+import { WhatsNew } from "@/components/layout/whats-new";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,6 +31,7 @@ export function CurveLoadShell({
       </main>
       <BottomTabBar />
       <AppTour />
+      <WhatsNew />
     </div>
   );
 }
