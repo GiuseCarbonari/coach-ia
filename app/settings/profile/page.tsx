@@ -6,6 +6,7 @@ import {
   DOSSIER_COLUMNS,
   rowToForm,
   type DossierRow,
+  type InjuryPeriod,
 } from "@/lib/onboarding/dossier";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,11 +27,13 @@ export default async function SettingsProfilePage() {
     .from("athlete_profiles")
     .select(DOSSIER_COLUMNS.join(", "))
     .eq("user_id", user.id)
-    .maybeSingle<DossierRow>();
+    .maybeSingle<DossierRow & { injury_periods?: InjuryPeriod[] }>();
+
+  const initialInjuryPeriods: InjuryPeriod[] = row?.injury_periods ?? [];
 
   return (
     <CurveLoadShell>
-      <SettingsDossierForm initialForm={rowToForm(row)} />
+      <SettingsDossierForm initialForm={rowToForm(row)} initialInjuryPeriods={initialInjuryPeriods} />
     </CurveLoadShell>
   );
 }

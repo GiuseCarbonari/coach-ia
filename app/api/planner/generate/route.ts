@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { generateWeekNarrative, isAIConfigured } from "@/lib/ai/provider";
 import type { MirrorData } from "@/lib/intervals/sync";
 import { buildWeek, type BuiltSession } from "@/lib/planner/build-week";
+import { isInjured } from "@/lib/planner/injury";
 import { detectPhase, type Phase } from "@/lib/planner/phase-detector";
 import { computeProgressionStateByFormat } from "@/lib/planner/progression";
 import {
@@ -121,6 +122,7 @@ interface ProfileRow {
   indoor_outdoor: string | null;
   ha_rulli: boolean | null;
   sport_principali: string[] | null;
+  injury_periods: Array<{ start: string; end: string; note?: string }> | null;
 }
 
 export async function POST() {
@@ -139,7 +141,7 @@ export async function POST() {
   const { data: profileRow } = await supabase
     .from("athlete_profiles")
     .select(
-      "profile_data, gap_analysis, data_obiettivo, gare_target, disponibilita_ore_sett, giorni_preferiti, giorni_impossibili, durata_max_weekday_min, durata_max_weekend_min, indoor_outdoor, ha_rulli, sport_principali"
+      "profile_data, gap_analysis, data_obiettivo, gare_target, disponibilita_ore_sett, giorni_preferiti, giorni_impossibili, durata_max_weekday_min, durata_max_weekend_min, indoor_outdoor, ha_rulli, sport_principali, injury_periods"
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -274,6 +276,15 @@ export async function POST() {
     ri,
     data_age_hours: dataAgeHours,
   });
+
+  // --- Marca sessioni in periodo infortunio ------------------------------------
+  const injuryPeriods = row?.injury_periods ?? [];
+  if (injuryPeriods.length > 0) {
+    week.sessions = week.sessions.map((s) => {
+      if (!isInjured(s.date, injuryPeriods)) return s;
+      return { ...s, blocked_by_user: true, rest: true, is_hard: false, title: 'Infortunio', description: '', session_objective: '', interval_structure: '', coach_notes: '', library_id: null };
+    });
+  }
 
   // --- Preserva i giorni locked (lavoro fatto + giorni bloccati) -------------
   // La rigenerazione NON deve sovrascrivere il passato né i riposi creati da una

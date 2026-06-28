@@ -1,21 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { BuildProfileButton } from "./build-button";
-import { CalibrateButton } from "./calibrate-button";
-import { CalibrationHelp } from "./calibration-help";
-import {
-  EventAnalysis,
-  type SavedGapAnalysis,
-} from "./event-analysis";
 import { ExplainButton } from "./explain-button";
-import { GapAnalysisButton } from "./gap-analysis-button";
 import { InfoTooltip } from "./info-tooltip";
-import { RaceEstimateView } from "./race-estimate";
+import { CoachCommentProfilo } from "./coach-comment-profilo";
 import { isAIConfigured } from "@/lib/ai/provider";
 import type { AthleteProfileData } from "@/lib/profile/build-profile";
-import type { TerrainSummary } from "@/lib/terrain/gpx-parser";
-import type { RaceEstimateV2 } from "@/lib/terrain/race-estimator-v2";
 
 const RPP_DISPLAY: Array<{ secs: number; label: string }> = [
   { secs: 5, label: "5s" },
@@ -44,29 +34,15 @@ interface ProfileTabsProps {
     model: "MORTON_3P" | "MS_2P" | "FFT_CURVES" | "ECP";
     source: string;
   } | null;
-  gapAnalysis: SavedGapAnalysis | null;
-  eventTerrain: TerrainSummary | null;
-  signatureLevel: 1 | 2 | null;
-  raceEstimate: RaceEstimateV2 | null;
   row: {
     ai_comment?: string | null;
     ai_comment_at?: string | null;
-    gap_analysis_at?: string | null;
-    race_estimate_at?: string | null;
   } | null;
+  aiCommentProfilo?: string | null;
+  aiCommentProfiloAt?: string | null;
 }
 
-export function ProfileTabs({
-  profile,
-  cpw,
-  gapAnalysis,
-  eventTerrain,
-  signatureLevel,
-  raceEstimate,
-  row,
-}: ProfileTabsProps) {
-  const [activeTab, setActiveTab] = useState<"profile" | "analysis">("profile");
-
+export function ProfileTabs({ profile, cpw, row, aiCommentProfilo, aiCommentProfiloAt }: ProfileTabsProps) {
   return (
     <>
       {/* Header */}
@@ -98,33 +74,8 @@ export function ProfileTabs({
 
       {profile && (
         <>
-          {/* Tab buttons */}
-          <div className="flex gap-2 border-b border-border">
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "profile"
-                  ? "border-accent2 text-foreground"
-                  : "border-transparent text-muted hover:text-secondary"
-              }`}
-            >
-              Profilo
-            </button>
-            <button
-              onClick={() => setActiveTab("analysis")}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "analysis"
-                  ? "border-accent2 text-foreground"
-                  : "border-transparent text-muted hover:text-secondary"
-              }`}
-            >
-              Analisi percorso
-            </button>
-          </div>
-
-          {/* Profile tab */}
-          {activeTab === "profile" && (
-            <div className="space-y-4 pt-4">
+          {/* Profile content */}
+          <div className="space-y-4 pt-4">
               {/* Quality warnings */}
               {profile.meta.confidence === "low" && (
                 <div className="rounded-[14px] border border-l-[3px] border-ready-modify-border border-l-ready-modify bg-surface px-4 py-3 text-[13px] text-secondary">
@@ -132,9 +83,6 @@ export function ProfileTabs({
                   indicativo.
                 </div>
               )}
-              {/* Calibration banner — only when event is set */}
-              {eventTerrain && <CalibrationBanner signatureLevel={signatureLevel} />}
-
               {/* CP Hero */}
               {cpw ? (
                 <div id="tour-cp-hero" className="rounded-[20px] border border-border bg-gradient-to-br from-brand/[0.10] to-surface-2/60 px-6 py-7">
@@ -262,143 +210,13 @@ export function ProfileTabs({
                 </div>
               )}
 
-              {/* AI comment */}
-              <ExplainButton
-                configured={isAIConfigured()}
-                initialComment={row?.ai_comment ?? null}
-                initialCommentAt={row?.ai_comment_at ?? null}
+              {/* AI comment - power profile */}
+              <CoachCommentProfilo
+                initialComment={aiCommentProfilo ?? null}
+                initialGeneratedAt={aiCommentProfiloAt ?? null}
               />
             </div>
-          )}
 
-          {/* Analysis tab */}
-          {activeTab === "analysis" && (
-            <div className="space-y-4 pt-4">
-              {/* Event analysis */}
-              <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[10.5px] uppercase tracking-[0.14em] text-accent2">
-                      Analisi evento
-                    </div>
-                    <h2 className="mt-1 font-serif text-[22px] text-foreground">
-                      Richieste del percorso
-                    </h2>
-                  </div>
-                  <div className="shrink-0">
-                    <GapAnalysisButton hasAnalysis={gapAnalysis != null} />
-                  </div>
-                </div>
-
-                {gapAnalysis && eventTerrain ? (
-                  <EventAnalysis
-                    terrain={eventTerrain}
-                    analysis={gapAnalysis}
-                    generatedAt={(row?.gap_analysis_at ?? null) as string | null}
-                  />
-                ) : (
-                  <div className="rounded-[16px] border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-                    Seleziona una gara da Intervals.icu o carica un GPX per vedere
-                    il profilo altimetrico e i limitatori specifici.
-                  </div>
-                )}
-              </section>
-
-              {/* Race estimate */}
-              {eventTerrain && (
-                <section className="space-y-4">
-                  <div>
-                    <div className="text-[10.5px] uppercase tracking-[0.14em] text-accent2">
-                      Stima gara
-                    </div>
-                    <h2 className="mt-1 font-serif text-[22px] text-foreground">
-                      Tempo e strategia
-                    </h2>
-                  </div>
-
-                  <CalibrationHelp />
-
-                  {signatureLevel == null && (
-                    <div className="flex items-center justify-between gap-3 rounded-[14px] border border-ready-skip-border bg-surface px-4 py-3.5">
-                      <div>
-                        <p className="text-[13px] font-medium text-foreground">
-                          Calibrazione assente
-                        </p>
-                        <p className="mt-0.5 text-[11.5px] text-muted">
-                          Adatta il modello alle tue uscite MTB recenti.
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        <CalibrateButton label="Calibra" />
-                      </div>
-                    </div>
-                  )}
-
-                  {signatureLevel === 2 && (
-                    <div className="flex items-center justify-between gap-3 rounded-[14px] border border-ready-modify-border bg-surface px-4 py-3.5">
-                      <div>
-                        <p className="text-[13px] font-medium text-foreground">
-                          Stima su valori medi MTB
-                        </p>
-                        <p className="mt-0.5 text-[11.5px] text-muted">
-                          {raceEstimate?.activities_used != null
-                            ? `${raceEstimate.activities_used} attività analizzate.`
-                            : "Calibra per rendere la stima personale."}
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        <CalibrateButton label="Migliora" variant="outline" />
-                      </div>
-                    </div>
-                  )}
-
-                  {signatureLevel === 1 && (
-                    <div className="flex items-center justify-between gap-3 rounded-[14px] border border-ready-go-border bg-surface px-4 py-3.5">
-                      <div>
-                        <p className="text-[13px] font-medium text-foreground">
-                          Calibrata sui tuoi dati
-                        </p>
-                        <p className="mt-0.5 text-[11.5px] text-muted">
-                          {raceEstimate?.source_breakdown
-                            ? `${raceEstimate.source_breakdown.L1}% dati personali.`
-                            : "Stima basata sulle tue uscite MTB."}
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        <CalibrateButton label="Ricalibra" variant="outline" />
-                      </div>
-                    </div>
-                  )}
-
-                  {signatureLevel != null && raceEstimate && (
-                    <>
-                      <RaceEstimateView
-                        terrain={eventTerrain}
-                        estimate={raceEstimate}
-                        generatedAt={
-                          (row?.race_estimate_at ?? null) as string | null
-                        }
-                      />
-                      {raceEstimate.source_breakdown && (
-                        <p className="text-[11px] text-faint">
-                          Copertura: L1 {raceEstimate.source_breakdown.L1}%
-                          personale · L2 {raceEstimate.source_breakdown.L2}%
-                          archetipo · L3 {raceEstimate.source_breakdown.L3}%
-                          modello fisico.
-                        </p>
-                      )}
-                    </>
-                  )}
-
-                  {signatureLevel != null && !raceEstimate && (
-                    <p className="rounded-[14px] border border-border bg-surface px-4 py-4 text-sm text-secondary">
-                      Firma pronta. Rianalizza l&apos;evento per generare la stima.
-                    </p>
-                  )}
-                </section>
-              )}
-            </div>
-          )}
         </>
       )}
     </>
@@ -471,41 +289,6 @@ function MiniCard({
         {value}
       </div>
       <div className="mt-1 text-[11px] text-faint">{sublabel}</div>
-    </div>
-  );
-}
-
-function CalibrationBanner({
-  signatureLevel,
-}: {
-  signatureLevel: 1 | 2 | null;
-}) {
-  if (signatureLevel === 1) {
-    return (
-      <div className="flex items-center gap-2 rounded-[14px] border border-ready-go-border bg-surface px-4 py-2.5">
-        <span className="text-[10px] text-ready-go">●</span>
-        <span className="text-[13px] font-medium text-foreground">
-          Calibrata sui tuoi dati
-        </span>
-      </div>
-    );
-  }
-  if (signatureLevel === 2) {
-    return (
-      <div className="flex items-center gap-2 rounded-[14px] border border-ready-modify-border bg-surface px-4 py-2.5">
-        <span className="text-[10px] text-ready-modify">◐</span>
-        <span className="text-[13px] font-medium text-foreground">
-          Stima su valori medi MTB
-        </span>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2 rounded-[14px] border border-ready-skip-border bg-surface px-4 py-2.5">
-      <span className="text-[10px] text-ready-skip">○</span>
-      <span className="text-[13px] font-medium text-foreground">
-        Firma non calibrata
-      </span>
     </div>
   );
 }

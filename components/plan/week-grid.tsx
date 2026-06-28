@@ -17,9 +17,10 @@ const DAY_SHORT: Record<DayKey, string> = {
   fri: "Ven", sat: "Sab", sun: "Dom",
 };
 
-type Tone = "hard" | "medium" | "easy" | "rest";
+type Tone = "hard" | "medium" | "easy" | "rest" | "injury";
 
 function sessionTone(s: BuiltSession): Tone {
+  if (s.title === "Infortunio") return "injury";
   if (s.rest) return "rest";
   if (s.is_hard) return "hard";
   // heuristica: Z1/Z2 → easy, else → medium
@@ -66,6 +67,14 @@ const TONE_CONFIG: Record<Tone, {
     kindLabel: "Riposo",
     chipBg: "bg-surface-2",
     chipText: "text-muted",
+    cardBg: "bg-transparent",
+  },
+  injury: {
+    accentBorder: "border-l-orange-400",
+    icon: "✕",
+    kindLabel: "Infortunio",
+    chipBg: "bg-orange-400/10",
+    chipText: "text-orange-400",
     cardBg: "bg-transparent",
   },
 };
@@ -225,7 +234,7 @@ export function WeekGrid({
                     <span className={`min-w-0 break-words font-serif text-[15px] leading-snug sm:text-[16px] ${
                       isCompleted ? "text-secondary" : "text-foreground"
                     }`}>
-                      {session.rest ? "Riposo" : session.title}
+                      {tone === "injury" ? "Infortunio" : session.rest ? "Riposo" : session.title}
                     </span>
                   </div>
                   {!session.rest && (

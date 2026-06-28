@@ -66,6 +66,13 @@ export interface DossierForm {
   note_personali: string;
 }
 
+/** Periodo di infortunio dichiarato dall'atleta. */
+export interface InjuryPeriod {
+  start: string; // YYYY-MM-DD
+  end: string;   // YYYY-MM-DD
+  note?: string;
+}
+
 /** Versione "stringhe" della gara target, per gli input controllati. */
 export interface GaraTargetForm {
   nome: string;
@@ -209,6 +216,7 @@ export const DOSSIER_COLUMNS = [
   "bici_outdoor",
   "piattaforma_indoor",
   "indoor_outdoor",
+  "injury_periods",
   "infortuni_attuali",
   "dolore_attuale",
   "farmaci_integratori",
@@ -421,6 +429,7 @@ export function formToPatch(form: DossierForm): Record<DossierColumn, unknown> {
     bici_outdoor: nullableText(form.bici_outdoor),
     piattaforma_indoor: nullableText(form.piattaforma_indoor),
     indoor_outdoor: nullableText(form.indoor_outdoor),
+    injury_periods: undefined, // gestito dalla UI settings, non dal wizard dossier
     infortuni_attuali: nullableText(form.infortuni_attuali),
     dolore_attuale: nullableText(form.dolore_attuale),
     farmaci_integratori: nullableText(form.farmaci_integratori),

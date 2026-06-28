@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Settings, SquareUser, Sparkles } from "lucide-react";
+import { CalendarDays, Mountain, Settings, SquareUser, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ const TABS = [
   { label: "Oggi", href: "/dashboard", icon: Sparkles, tourId: undefined },
   { label: "Piano", href: "/plan", icon: CalendarDays, tourId: "tour-tab-plan" },
   { label: "Profilo", href: "/profile", icon: SquareUser, tourId: "tour-tab-profile" },
+  { label: "Percorso", href: "/terrain", icon: Mountain, tourId: undefined },
   { label: "Impostazioni", href: "/settings/profile", icon: Settings, tourId: undefined },
 ] as const;
 

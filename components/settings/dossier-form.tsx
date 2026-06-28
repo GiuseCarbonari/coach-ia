@@ -25,6 +25,7 @@ import {
   SESSO_OPTIONS,
   STILE_OPTIONS,
   type DossierForm,
+  type InjuryPeriod,
 } from "@/lib/onboarding/dossier";
 
 /**
@@ -80,9 +81,21 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function SettingsDossierForm({ initialForm }: { initialForm: DossierForm }) {
+export function SettingsDossierForm({
+  initialForm,
+  initialInjuryPeriods = [],
+}: {
+  initialForm: DossierForm;
+  initialInjuryPeriods?: InjuryPeriod[];
+}) {
   const [saved, setSaved] = useState<DossierForm>(initialForm);
   const [form, setForm] = useState<DossierForm>(initialForm);
+  const [injuryPeriods, setInjuryPeriods] = useState<InjuryPeriod[]>(initialInjuryPeriods);
+  const [injuryStart, setInjuryStart] = useState("");
+  const [injuryEnd, setInjuryEnd] = useState("");
+  const [injuryNote, setInjuryNote] = useState("");
+  const [injurySaving, setInjurySaving] = useState(false);
+  const [injuryError, setInjuryError] = useState<string | null>(null);
   const [editing, setEditing] = useState<GroupKey | null>(null);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -104,6 +117,33 @@ export function SettingsDossierForm({ initialForm }: { initialForm: DossierForm 
     setForm(saved);
     setEditing(null);
     setError(null);
+  }
+
+  async function saveInjuryPeriods(updated: InjuryPeriod[]) {
+    setInjurySaving(true);
+    setInjuryError(null);
+    const res = await fetch("/api/onboarding/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile: { injury_periods: updated } }),
+    }).catch(() => null);
+    setInjurySaving(false);
+    if (!res || !res.ok) {
+      setInjuryError("Salvataggio fallito, riprova");
+      return;
+    }
+    setInjuryPeriods(updated);
+  }
+
+  function addInjuryPeriod() {
+    if (!injuryStart || !injuryEnd || injuryEnd < injuryStart) return;
+    const updated = [...injuryPeriods, { start: injuryStart, end: injuryEnd, note: injuryNote || undefined }];
+    setInjuryStart(""); setInjuryEnd(""); setInjuryNote("");
+    void saveInjuryPeriods(updated);
+  }
+
+  function removeInjuryPeriod(i: number) {
+    void saveInjuryPeriods(injuryPeriods.filter((_, idx) => idx !== i));
   }
 
   async function handleSave() {
@@ -267,6 +307,70 @@ export function SettingsDossierForm({ initialForm }: { initialForm: DossierForm 
           </div>
         )}
       </Group>
+
+      {/* Periodi infortunio */}
+      <section className="rounded-[18px] border border-border bg-surface p-5">
+        <h2 className="mb-3 font-serif text-lg font-medium text-foreground">Periodi infortunio</h2>
+        <p className="mb-4 text-[13px] text-muted">
+          Durante questi periodi il planner non genera sedute. Rigenera il piano dopo aver salvato.
+        </p>
+
+        {injuryPeriods.length > 0 && (
+          <div className="mb-4 divide-y divide-border">
+            {injuryPeriods.map((p, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="text-sm">
+                  <span className="text-orange-400 font-medium">{p.start}</span>
+                  <span className="mx-1 text-muted">→</span>
+                  <span className="text-orange-400 font-medium">{p.end}</span>
+                  {p.note && <span className="ml-2 text-[12px] text-muted">({p.note})</span>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeInjuryPeriod(i)}
+                  disabled={injurySaving}
+                  className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[12px] text-ready-skip transition-colors hover:bg-ready-skip/10 disabled:opacity-40"
+                >
+                  Rimuovi
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="date"
+            value={injuryStart}
+            onChange={e => setInjuryStart(e.target.value)}
+            className="rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-brand"
+            aria-label="Inizio infortunio"
+          />
+          <input
+            type="date"
+            value={injuryEnd}
+            min={injuryStart}
+            onChange={e => setInjuryEnd(e.target.value)}
+            className="rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-brand"
+            aria-label="Fine infortunio"
+          />
+          <input
+            type="text"
+            placeholder="Nota (opzionale)"
+            value={injuryNote}
+            onChange={e => setInjuryNote(e.target.value)}
+            className="min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder:text-faint focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+          <Button
+            onClick={addInjuryPeriod}
+            disabled={!injuryStart || !injuryEnd || injuryEnd < injuryStart || injurySaving}
+          >
+            {injurySaving ? "Salvo…" : "Aggiungi"}
+          </Button>
+        </div>
+
+        {injuryError && <p className="mt-2 text-sm text-ready-skip">{injuryError}</p>}
+      </section>
 
       {saveBar}
 
