@@ -5,7 +5,7 @@ import Groq from "groq-sdk";
  * Astrazione provider AI per i tre commenti (OGGI, PROFILO, PERCORSO).
  *
  * Switch tra Anthropic (default) e Groq (env COACH_AI_PROVIDER=groq).
- * Max tokens: 300/comment (tight budget → ≤150 words output).
+ * Max tokens: Groq 500 / Anthropic 800 → commenti di media lunghezza (~120-150 parole).
  * Nessun numero inventato — solo spiegazione e consigli dai dati forniti.
  */
 
@@ -44,6 +44,8 @@ export async function generateComment(input: AICommentInput): Promise<AICommentO
 
 const MODEL_ANTHROPIC = "claude-sonnet-4-6";
 const MAX_TOKENS = 800;
+// Groq usa un budget più stretto: commenti di media lunghezza, modello economico.
+const MAX_TOKENS_GROQ = 500;
 
 const SYSTEM_PROMPTS: Record<CommentSection, string> = {
   oggi: `Sei un coach ciclismo che conosce l'atleta da anni. Commenta lo stato OGGI in modo naturale e conversazionale, senza asterischi, numeri o elenchi. Parla come un amico esperto.
@@ -54,7 +56,7 @@ Analizza il quadro completo: come sta davvero oggi? È un giorno di forma oppure
 
 Poi dai un consiglio pratico e personale: se readiness è GO, di' che può spingere; se CAUTION, avvertilo di stare attento; se STOP, suggerisci riposo. Se HRV scende o sonno è basso, menzioni il recupero. Se infortunio è attivo, SOLO prescrizioni mediche, zero workout.
 
-TONO: Amico mentore che conosce i dati. Naturale, discorsivo, non tecnico, no elenchi. Max 200 parole. Italiano.`,
+TONO: Amico mentore che conosce i dati. Naturale, discorsivo, non tecnico, no elenchi. Max 130 parole: leggi lo stato di oggi e dai un consiglio pratico, senza preamboli inutili. Italiano.`,
   profilo: `Sei un coach che analizza il profilo di potenza di un atleta.
 
 ANALIZZA in questo ordine:
@@ -70,7 +72,7 @@ CONSIGLI CONCRETI (scegli quello rilevante):
 - Se sprinter puro: "Punti forti sui 30s–1min. Lavora su resistenza aerobica 4–6min per diventare più completo e versatile."
 - Se climber dominante: "Forte in montagna ma vulnerabile in pianura veloce. Sviluppa capacità anaerobica, 2x/settimana sprint brevi."
 
-TONO: Tecnico ma accessibile, naturale e discorsivo come un coach che parla all'atleta. Stai raccontando cosa significa il suo profilo e come migliorarlo. NIENTE asterischi, grassetto, titoli o elenchi puntati: solo prosa scorrevole. Max 180 parole. Italiano.`,
+TONO: Tecnico ma accessibile, naturale e discorsivo come un coach che parla all'atleta. Stai raccontando cosa significa il suo profilo e come migliorarlo. NIENTE asterischi, grassetto, titoli o elenchi puntati: solo prosa scorrevole. Max 120 parole: fenotipo, limitatori principali e i consigli più rilevanti, senza preamboli inutili. Italiano.`,
   percorso: `Sei un coach che prepara un atleta per una gara specifica.
 
 ANALIZZA in questo ordine:
@@ -87,7 +89,7 @@ CONSIGLI CONCRETI (adatta al percorso):
 - Esempio salite medie: "Gara di 3h con 1500m D+. Nutrizione: 2 barre energetiche + 2 gels + 500ml isotonica. Attaccate in discesa (vostro punto forte), non in salita."
 - Esempio montagna: "Gara di 5h in montagna. Voi siete all-rounder, altri sono specialisti. Gara tattica: stare con i gruppi in salita, attaccare quando loro calano. Recupero: riposo attivo 48h, reidratazione salata nei primi 30min."
 
-TONO: Tattico, specifico, confidente, naturale e discorsivo come un coach che parla all'atleta. Stai preparando l'atleta a gareggiare e vincere. NIENTE asterischi, grassetto, titoli o elenchi puntati: solo prosa scorrevole. Max 220 parole. Italiano.`,
+TONO: Tattico, specifico, confidente, naturale e discorsivo come un coach che parla all'atleta. Stai preparando l'atleta a gareggiare e vincere. NIENTE asterischi, grassetto, titoli o elenchi puntati: solo prosa scorrevole. Max 150 parole: tipo di gara, punti critici, pacing e nutrizione, senza preamboli inutili. Italiano.`,
 };
 
 async function generateCommentAnthropic(input: AICommentInput): Promise<AICommentOutput> {
@@ -145,12 +147,8 @@ async function generateCommentGroq(input: AICommentInput): Promise<AICommentOutp
   const groq = new Groq({ apiKey });
 
   const response = await groq.chat.completions.create({
-    model: "qwen/qwen3.6-27b",
-    max_tokens: MAX_TOKENS,
-    // Spegne il reasoning: 'hidden' lo nasconde ma lo genera lo stesso,
-    // bruciando i token e svuotando il content. I commenti spiegano dati
-    // già calcolati, non serve. https://console.groq.com/docs/reasoning
-    reasoning_effort: "none",
+    model: "llama-3.1-8b-instant",
+    max_tokens: MAX_TOKENS_GROQ,
     messages: [
       {
         role: "system",
